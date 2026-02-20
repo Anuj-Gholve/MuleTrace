@@ -1,6 +1,6 @@
 # Graph-Based Financial Crime Detection Engine
 
-> **Hackathon Project** — Money Muling Detection using Graph Theory
+> **MuleTrace** — Money Muling Detection using Graph Theory
 
 A production-ready web application that analyzes transaction data to detect financial crime patterns (cycles, smurfing, shell networks) using graph algorithms, and presents results through an interactive dashboard with graph visualization.
 
@@ -10,29 +10,29 @@ A production-ready web application that analyzes transaction data to detect fina
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                        Frontend (React)                       │
+│                        Frontend (React)                      │
 │  ┌──────────┐  ┌──────────────────┐  ┌────────────────────┐  │
-│  │  Upload   │  │  Results Table   │  │  Cytoscape.js      │  │
-│  │  (CSV)    │──│  (Dashboard)     │  │  Graph Viz         │  │
+│  │  Upload  │  │  Results Table   │  │  Cytoscape.js      │  │
+│  │  (CSV)   │──│  (Dashboard)     │  │  Graph Viz         │  │
 │  └──────────┘  └──────────────────┘  └────────────────────┘  │
-│           │            ▲                       ▲              │
-│           └────────────┼───────────────────────┘              │
-│                        │  JSON Response                       │
+│           ▲            ▲                       ▲             │
+│           └────────────┼───────────────────────┘             │
+│                        │  JSON Response                      │
 └────────────────────────┼─────────────────────────────────────┘
                          │  HTTP POST /api/upload
 ┌────────────────────────┼─────────────────────────────────────┐
-│                    Backend (FastAPI)                           │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │               Detection Pipeline                         │ │
-│  │  1. Parse CSV → Build Adjacency Lists                    │ │
-│  │  2. Precompute Metrics (degree, sorted txns)             │ │
-│  │  3. Cycle Detection (DFS, length 3–5)                    │ │
-│  │  4. Smurfing Detection (72h sliding window)              │ │
-│  │  5. Shell Network Detection (DFS depth 4)                │ │
-│  │  6. Suspicion Scoring (additive, capped 100)             │ │
-│  │  7. Ring Risk Scoring (avg × multiplier)                 │ │
-│  │  8. JSON Assembly                                        │ │
-│  └──────────────────────────────────────────────────────────┘ │
+│                    Backend (FastAPI)                         │
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │               Detection Pipeline                         ││
+│  │  1. Parse CSV → Build Adjacency Lists                    ││
+│  │  2. Precompute Metrics (degree, sorted txns)             ││
+│  │  3. Cycle Detection (DFS, length 3–5)                    ││
+│  │  4. Smurfing Detection (72h sliding window)              ││
+│  │  5. Shell Network Detection (DFS depth 4)                ││
+│  │  6. Suspicion Scoring (additive, capped 100)             ││
+│  │  7. Ring Risk Scoring (avg × multiplier)                 ││
+│  │  8. JSON Assembly                                        ││
+│  └──────────────────────────────────────────────────────────┘│
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -108,6 +108,79 @@ A sample file is provided at `sample_transactions.csv`.
 
 ---
 
+Detection Algorithms
+## 1. Cycle Detection (Length 3–5)
+Detects circular laundering loops:  
+```
+A → B → C → A
+```
+Method
+Depth-limited DFS (max depth = 5)
+Valid cycle:
+Depth ≥ 3
+Returns to starting node
+All nodes distinct  
+Duplicate prevention:  
+Accept only if smallest node ID is start
+
+Complexity
+```
+O(V · d⁵)
+```
+
+Where:  
+V = accounts  
+d = average branching factor  
+Optimized with pruning + early exit.
+
+## 2. Smurfing Detection (Fan-In / Fan-Out)
+
+Detects rapid aggregation or distribution of funds.  
+Fan-In Pattern
+
+```
+≥ 10 unique senders
+
+Within 72-hour window
+```
+
+Same receiver
+
+Fan-Out Pattern
+```
+1 sender → ≥ 10 receivers
+
+Within 72-hour window
+```
+
+Method
+
+Transactions sorted by timestamp  
+Sliding window (two-pointer technique)  
+Complexity
+Sorting: O(E log E)
+Window scan: O(E)  
+Where E = transactions.
+
+
+## 3. Shell Network Detection
+
+Detects layered laundering chains:
+```
+A → B → C → D
+```
+Conditions  
+Path length ≥ 3  
+Intermediate nodes have total_degree ≤ 3  
+DFS depth limit = 4  
+This identifies temporary shell accounts used only for layering.
+
+Complexity
+```
+O(V · d⁴)
+```
+---
+
 ## Suspicion Score Methodology
 
 Scores are additive per account, capped at 100:
@@ -118,7 +191,7 @@ Scores are additive per account, capped at 100:
 | Fan-in (72h)  | +25    | Aggregating from 10+ sources rapidly |
 | Fan-out (72h) | +25    | Dispersing to 10+ targets rapidly |
 | Shell chain   | +20    | Layering through low-activity intermediaries |
-
+---
 ### Ring Risk Score
 
 ```
@@ -228,6 +301,30 @@ npm run build   # output → frontend/dist/
 
 ---
 
-## License
+### Performance Benchmarks:  
+Supports up to 10,000 transactions  
+Processing time ≤ 30 seconds  
+Precision ≥ 70%  
+Recall ≥ 60%  
+False positives minimized using structural validation  
 
-Hackathon project — MIT License.
+---
+
+### False Positive Control Strategy:
+Strict 72-hour temporal clustering  
+Degree-based filtering for shell nodes   
+No isolated anomaly flagging  
+Multi-account structural confirmation required  
+Structural + temporal validation combined
+
+---
+
+## Live Demo:
+https://mule-trace-gilt.vercel.app/
+---
+
+# Team Members:
+Anuj Arjun Gholve  
+Ayush Sanjay Butala  
+Chinmay Mahesh Gambhir  
+Diya Mahesh Rade  
