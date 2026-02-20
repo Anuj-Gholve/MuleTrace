@@ -23,7 +23,8 @@ export default function FileUpload({ onUploadStart, onProcessing, onResults, onE
 
             try {
                 onProcessing()
-                const response = await axios.post('/api/upload', formData, {
+                const API_URL = import.meta.env.VITE_API_URL || ''
+                const response = await axios.post(`${API_URL}/api/upload`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                     timeout: 120000,
                 })
@@ -50,8 +51,8 @@ export default function FileUpload({ onUploadStart, onProcessing, onResults, onE
         <div
             {...getRootProps()}
             className={`relative cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-300 ${isDragActive
-                    ? 'border-primary-400 bg-primary-600/10 shadow-xl shadow-primary-600/10'
-                    : 'border-primary-700/40 hover:border-primary-500/60 hover:bg-primary-900/10'
+                ? 'border-primary-400 bg-primary-600/10 shadow-xl shadow-primary-600/10'
+                : 'border-primary-700/40 hover:border-primary-500/60 hover:bg-primary-900/10'
                 } ${isLoading ? 'pointer-events-none opacity-70' : ''}`}
         >
             <input {...getInputProps()} />
